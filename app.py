@@ -1,7 +1,3 @@
-import os
-# Keras 3 වල එන බාධා මගහැරීමට Legacy Mode එක සක්‍රිය කිරීම
-os.environ['TF_USE_LEGACY_KERAS'] = '1'
-
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -19,18 +15,18 @@ st.markdown(f"**Researcher:** CHAMIKA SANKALPA | **Project:** Battery Thermal Ma
 @st.cache_resource
 def load_assets():
     try:
-        # පරණ .h5 model එක කිසිම ප්‍රශ්නයක් නැතුව load කිරීම
+        # TensorFlow ඇතුළේ තියෙන Keras පාවිච්චි කිරීම
         model = tf.keras.models.load_model('bms_final_lstm_model.h5', compile=False)
         scaler_X = joblib.load('scaler_X_final.pkl')
         scaler_y = joblib.load('scaler_y_final.pkl')
         return model, scaler_X, scaler_y
     except Exception as e:
-        st.error(f"Error loading assets: {e}")
+        st.error(f"⚠️ Model Loading Error: {e}")
         return None, None, None
 
 model, scaler_X, scaler_y = load_assets()
 
-if model:
+if model is not None:
     # 3. Sidebar Inputs
     st.sidebar.header("🕹️ Real-time Parameters")
     v_in = st.sidebar.slider("Voltage Input (V)", 10.0, 15.0, 12.8, 0.1)
@@ -44,7 +40,7 @@ if model:
     power = v_in * i_in
     input_features = np.array([[v_in, i_in, 0.01, 0.01, power]])
     
-    # Scale and Reshape for LSTM (1, 30, 5)
+    # Scale and Reshape for LSTM
     input_scaled = scaler_X.transform(input_features)
     input_seq = np.tile(input_scaled, (1, 30, 1))
 
@@ -68,33 +64,23 @@ if model:
     with col2:
         st.metric("Current (A)", f"{i_in} A")
     with col3:
-        status_color = "normal" if temp_res < 40 else "inverse"
-        st.metric("Predicted Temp", f"{temp_res:.2f} °C", delta=f"{temp_res-30:.2f} °C", delta_color=status_color)
+        st.metric("Predicted Temp", f"{temp_res:.2f} °C")
 
     st.markdown("---")
 
-    # 7. Visualization
+    # 7. Visuals
     chart_col, gauge_col = st.columns([2, 1])
     with chart_col:
-        st.subheader("📈 Temperature Trend (Real-time)")
+        st.subheader("📈 Temperature Trend")
         st.line_chart(st.session_state.history.set_index('Time')['Temp'])
 
     with gauge_col:
-        st.subheader("🌡️ Heat Level Gauge")
+        st.subheader("🌡️ Heat Level")
         fig = go.Figure(go.Indicator(
             mode = "gauge+number",
             value = temp_res,
-            domain = {'x': [0, 1], 'y': [0, 1]},
-            title = {'text': "Celsius"},
-            gauge = {
-                'axis': {'range': [None, 60]},
-                'bar': {'color': "darkblue"},
-                'steps': [
-                    {'range': [0, 35], 'color': "lightgreen"},
-                    {'range': [35, 45], 'color': "orange"},
-                    {'range': [45, 60], 'color': "red"}],
-                'threshold': {'line': {'color': "black", 'width': 4}, 'thickness': 0.75, 'value': 40}
-            }))
+            gauge = {'axis': {'range': [None, 60]}, 'bar': {'color': "darkblue"}}
+        ))
         st.plotly_chart(fig, use_container_width=True)
 else:
-    st.warning("🔄 Waiting for model synchronization... Checking requirements.")
+    st.info("🔄 System is synchronizing libraries. Please wait a moment and refresh.")

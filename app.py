@@ -1,3 +1,7 @@
+import os
+# Keras 3 ගැටලුව මගහැරීමට legacy mode එක සක්‍රිය කිරීම
+os.environ['TF_USE_LEGACY_KERAS'] = '1'
+
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -11,19 +15,22 @@ st.set_page_config(page_title="BMS Research Dashboard", layout="wide")
 st.title("🛡️ Advanced Battery Thermal Management System")
 st.markdown(f"**Researcher:** CHAMIKA SANKALPA | **Project:** Battery Thermal Management Research")
 
-# 2. Load Model & Scalers (අලුත්ම ක්‍රමයට)
+# 2. Load Model & Scalers
 @st.cache_resource
 def load_assets():
-    # Keras version mismatch එක මගහැරීමට සරලවම model එක load කිරීම
-    # මෙහිදී custom_objects භාවිතයෙන් අර කරදරකාරී keyword arguments මගහරිනවා
-    model = tf.keras.models.load_model('bms_final_lstm_model.h5', compile=False)
-    scaler_X = joblib.load('scaler_X_final.pkl')
-    scaler_y = joblib.load('scaler_y_final.pkl')
-    return model, scaler_X, scaler_y
+    try:
+        # පරණ .h5 model එක load කිරීම
+        model = tf.keras.models.load_model('bms_final_lstm_model.h5', compile=False)
+        scaler_X = joblib.load('scaler_X_final.pkl')
+        scaler_y = joblib.load('scaler_y_final.pkl')
+        return model, scaler_X, scaler_y
+    except Exception as e:
+        st.error(f"Error loading assets: {e}")
+        return None, None, None
 
-try:
-    model, scaler_X, scaler_y = load_assets()
-    
+model, scaler_X, scaler_y = load_assets()
+
+if model:
     # 3. Sidebar Inputs
     st.sidebar.header("🕹️ Real-time Parameters")
     v_in = st.sidebar.slider("Voltage Input (V)", 10.0, 15.0, 12.8, 0.1)
@@ -37,18 +44,15 @@ try:
     power = v_in * i_in
     input_features = np.array([[v_in, i_in, 0.01, 0.01, power]])
     
-    # Scaler transform
+    # Scale and Reshape for LSTM (1, 30, 5)
     input_scaled = scaler_X.transform(input_features)
-    
-    # LSTM එකට අවශ්‍ය (1, 30, 5) shape එකට සකස් කිරීම
-    # අතින් reshape කිරීම මගින් අර InputLayer error එක මගහරිනවා
     input_seq = np.tile(input_scaled, (1, 30, 1))
 
     # Prediction
     prediction = model.predict(input_seq, verbose=0)
     temp_res = float(scaler_y.inverse_transform(prediction)[0][0])
 
-    # History Update
+    # Update History
     new_data = pd.DataFrame({
         'Time': [datetime.now().strftime("%H:%M:%S")], 
         'Voltage': [v_in], 
@@ -92,7 +96,5 @@ try:
                 'threshold': {'line': {'color': "black", 'width': 4}, 'thickness': 0.75, 'value': 40}
             }))
         st.plotly_chart(fig, use_container_width=True)
-
-except Exception as e:
-    st.error(f"⚠️ System Mismatch Detected: {e}")
-    st.info("💡 Tip: Try updating your requirements.txt to use 'tensorflow-cpu==2.15.0'")
+else:
+    st.warning("🔄 Waiting for model synchronization... Please check if requirements.txt includes tensorflow-cpu==2.15.0")

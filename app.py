@@ -11,17 +11,17 @@ st.set_page_config(page_title="BMS Research Dashboard", layout="wide")
 st.title("🛡️ Advanced Battery Thermal Management System")
 st.markdown(f"**Researcher:** CHAMIKA SANKALPA | **Project:** Battery Thermal Management Research")
 
-# 2. Load Model & Scalers
+# 2. Load Model & Scalers (Keras 3 වලට ගැළපෙන ලෙස)
 @st.cache_resource
 def load_assets():
     try:
-        # TensorFlow ඇතුළේ තියෙන Keras පාවිච්චි කිරීම
-        model = tf.keras.models.load_model('bms_final_lstm_model.h5', compile=False)
+        # Keras 3 model එකක් නිසා safe_mode=False අනිවාර්ය වේ
+        model = tf.keras.models.load_model('bms_final_lstm_model.h5', compile=False, safe_mode=False)
         scaler_X = joblib.load('scaler_X_final.pkl')
         scaler_y = joblib.load('scaler_y_final.pkl')
         return model, scaler_X, scaler_y
     except Exception as e:
-        st.error(f"⚠️ Model Loading Error: {e}")
+        st.error(f"⚠️ Initialization Error: {e}")
         return None, None, None
 
 model, scaler_X, scaler_y = load_assets()
@@ -40,8 +40,9 @@ if model is not None:
     power = v_in * i_in
     input_features = np.array([[v_in, i_in, 0.01, 0.01, power]])
     
-    # Scale and Reshape for LSTM
+    # Scaling and Reshaping (LSTM requires 3D input: [batch, timesteps, features])
     input_scaled = scaler_X.transform(input_features)
+    # ඔයාගේ model එකේ timesteps 30ක් බලාපොරොත්තු වන නිසා:
     input_seq = np.tile(input_scaled, (1, 30, 1))
 
     # Prediction
@@ -83,4 +84,4 @@ if model is not None:
         ))
         st.plotly_chart(fig, use_container_width=True)
 else:
-    st.info("🔄 System is synchronizing libraries. Please wait a moment and refresh.")
+    st.info("🔄 Updating system to match your AI model version. Please refresh in a minute.")

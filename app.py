@@ -1,5 +1,5 @@
 import os
-# Keras 3 ගැටලුව මගහැරීමට legacy mode එක සක්‍රිය කිරීම
+# Keras 3 වල එන බාධා මගහැරීමට Legacy Mode එක සක්‍රිය කිරීම
 os.environ['TF_USE_LEGACY_KERAS'] = '1'
 
 import streamlit as st
@@ -19,7 +19,7 @@ st.markdown(f"**Researcher:** CHAMIKA SANKALPA | **Project:** Battery Thermal Ma
 @st.cache_resource
 def load_assets():
     try:
-        # පරණ .h5 model එක load කිරීම
+        # පරණ .h5 model එක කිසිම ප්‍රශ්නයක් නැතුව load කිරීම
         model = tf.keras.models.load_model('bms_final_lstm_model.h5', compile=False)
         scaler_X = joblib.load('scaler_X_final.pkl')
         scaler_y = joblib.load('scaler_y_final.pkl')
@@ -36,7 +36,7 @@ if model:
     v_in = st.sidebar.slider("Voltage Input (V)", 10.0, 15.0, 12.8, 0.1)
     i_in = st.sidebar.slider("Current Input (A)", 0.0, 5.0, 1.5, 0.1)
 
-    # 4. Session State for History
+    # 4. History Storage
     if 'history' not in st.session_state:
         st.session_state.history = pd.DataFrame(columns=['Time', 'Voltage', 'Current', 'Temp'])
 
@@ -73,7 +73,7 @@ if model:
 
     st.markdown("---")
 
-    # 7. Visuals
+    # 7. Visualization
     chart_col, gauge_col = st.columns([2, 1])
     with chart_col:
         st.subheader("📈 Temperature Trend (Real-time)")
@@ -97,4 +97,4 @@ if model:
             }))
         st.plotly_chart(fig, use_container_width=True)
 else:
-    st.warning("🔄 Waiting for model synchronization... Please check if requirements.txt includes tensorflow-cpu==2.15.0")
+    st.warning("🔄 Waiting for model synchronization... Checking requirements.")

@@ -1,6 +1,5 @@
 streamlit
 tensorflow-cpu==2.15.0
-tf-keras
 pandas
 numpy
 joblib

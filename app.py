@@ -14,13 +14,13 @@ st.markdown(f"**Researcher:** CHAMIKA SANKALPA | **Project:** Battery Thermal Ma
 # 2. Load Model & Scalers (අලුත්ම ක්‍රමයට)
 @st.cache_resource
 def load_assets():
-    # Deserialization Error එක මගහැරීමට සරලවම model එක load කිරීම
+    # Keras version mismatch එක මගහැරීමට සරලවම model එක load කිරීම
+    # මෙහිදී custom_objects භාවිතයෙන් අර කරදරකාරී keyword arguments මගහරිනවා
     model = tf.keras.models.load_model('bms_final_lstm_model.h5', compile=False)
     scaler_X = joblib.load('scaler_X_final.pkl')
     scaler_y = joblib.load('scaler_y_final.pkl')
     return model, scaler_X, scaler_y
 
-# Error handling එකක් දාලා තියෙන්නේ site එක crash වෙන්නේ නැතිවෙන්න
 try:
     model, scaler_X, scaler_y = load_assets()
     
@@ -35,17 +35,16 @@ try:
 
     # 5. Prediction Logic
     power = v_in * i_in
-    # මූලික input array එක සෑදීම
     input_features = np.array([[v_in, i_in, 0.01, 0.01, power]])
     
-    # Scaler එක පාවිච්චි කරලා transform කිරීම
+    # Scaler transform
     input_scaled = scaler_X.transform(input_features)
     
     # LSTM එකට අවශ්‍ය (1, 30, 5) shape එකට සකස් කිරීම
-    input_seq = np.zeros((1, 30, 5))
-    input_seq[0, :, :] = input_scaled
+    # අතින් reshape කිරීම මගින් අර InputLayer error එක මගහරිනවා
+    input_seq = np.tile(input_scaled, (1, 30, 1))
 
-    # Prediction කිරීම
+    # Prediction
     prediction = model.predict(input_seq, verbose=0)
     temp_res = float(scaler_y.inverse_transform(prediction)[0][0])
 
@@ -58,7 +57,7 @@ try:
     })
     st.session_state.history = pd.concat([st.session_state.history, new_data]).tail(10)
 
-    # 6. Dashboard Metrics Display
+    # 6. Dashboard Metrics
     col1, col2, col3 = st.columns(3)
     with col1:
         st.metric("Voltage (V)", f"{v_in} V")
@@ -94,8 +93,6 @@ try:
             }))
         st.plotly_chart(fig, use_container_width=True)
 
-    if temp_res > 40:
-        st.error("🚨 CRITICAL ALERT: Battery temperature exceeding safe limits!")
-
 except Exception as e:
-    st.error(f"System Initializing... Please wait or Refresh. (Detail: {e})")
+    st.error(f"⚠️ System Mismatch Detected: {e}")
+    st.info("💡 Tip: Try updating your requirements.txt to use 'tensorflow-cpu==2.15.0'")
